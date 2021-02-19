@@ -1,7 +1,7 @@
 import heapq
 
 def move(loc, dir):
-    directions = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+    directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0,0)]
     return loc[0] + directions[dir][0], loc[1] + directions[dir][1]
 
 
@@ -21,7 +21,7 @@ def compute_heuristics(my_map, goal):
     closed_list[goal] = root
     while len(open_list) > 0:
         (cost, loc, curr) = heapq.heappop(open_list)
-        for dir in range(4):
+        for dir in range(5):
             child_loc = move(loc, dir)
             child_cost = cost + 1
             if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
@@ -53,7 +53,7 @@ def build_constraint_table(constraints, agent):
     #               the given agent for each time step. The table can be used
     #               for a more efficient constraint violation check in the 
     #               is_constrained function.
-
+    constraint_table = {}
     pass
 
 
@@ -115,9 +115,10 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     closed_list = dict()
     earliest_goal_timestep = 0
     h_value = h_values[start_loc]
+    build_constraint_table(constraints, agent)
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None}
     push_node(open_list, root)
-    closed_list[(root['loc'])] = root
+    closed_list[(root['loc'],root['g_val'])] = root
     while len(open_list) > 0:
         curr = pop_node(open_list)
         #############################
@@ -132,13 +133,17 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                     'g_val': curr['g_val'] + 1,
                     'h_val': h_values[child_loc],
                     'parent': curr}
-            if (child['loc']) in closed_list:
-                existing_node = closed_list[(child['loc'])]
+            if (child['loc'], child['g_val']) in closed_list:
+                existing_node = closed_list[(child['loc'], child['g_val'])]
                 if compare_nodes(child, existing_node):
-                    closed_list[(child['loc'])] = child
+                    closed_list[(child['loc'], child['g_val'])] = child
+
+                    #constraints[(child['loc'], child['g_val'])] = child
                     push_node(open_list, child)
             else:
-                closed_list[(child['loc'])] = child
+                closed_list[(child['loc'], child['g_val'])] = child
+                #constraints[(child['loc'], child['g_val'])] = child
+
                 push_node(open_list, child)
 
     return None  # Failed to find solutions
