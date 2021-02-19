@@ -54,6 +54,7 @@ def build_constraint_table(constraints : list, agent):
     #               for a more efficient constraint violation check in the 
     #               is_constrained function.
     constraint_table = dict()
+
     for index in constraints:
         for set_value in index:
             constraint = {
@@ -61,14 +62,15 @@ def build_constraint_table(constraints : list, agent):
                 'time' : set_value[0],
                 'location' : set_value[1]
             }
+        #TODO: Add support for multiple values per key
         constraint_table[set_value[0]] = constraint
 
     #TODO: Remove test code later
-    if len(constraints) == 0:
-         constraint_table = {4 : {
-             'agent': 0,
-             'time': 4,
-             'location': (1,5)
+    if len(constraints) != 0:
+         constraint_table = {1 : {
+             'agent': 1,
+             'time': 1,
+             'location': [(1,2), (1,3)],
          }}
 
     return constraint_table
@@ -99,10 +101,17 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
     #               any given constraint. For efficiency the constraints are indexed in a constraint_table
     #               by time step, see build_constraint_table.
     if constraint_table:
-        print(next_time)
         constraint = constraint_table.get(next_time)
-        if constraint and constraint['location'] == next_loc:
-            return True
+        if constraint:
+            location_constraints = constraint['location']
+            # This line exist in a very retar..ehem, Python fashion
+            var = type(location_constraints)
+            if var == tuple and location_constraints == next_loc:
+                return True
+            if var == list:
+                print(location_constraints)
+                if location_constraints[0] == curr_loc and location_constraints[1] == next_loc:
+                    return True
     return False
 
 
