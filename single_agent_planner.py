@@ -62,30 +62,32 @@ def build_constraint_table(constraints : list, agent):
                 'time' : set_value[0],
                 'location' : set_value[1]
             }
-        #TODO: Add support for multiple values per key
-        const_list = list()
-        const_list.append(constraint)
-        constraint_table[set_value[0]] = const_list
+        if constraint_table.get(set_value[0]):
+            constraint_table.get(set_value[0]).append(constraint)
+        else:
+            const_list = list()
+            const_list.append(constraint)
+            constraint_table[set_value[0]] = const_list
 
     #Min Sum Costs + 1.5 answer
-    add_constraint_to_table(constraint_table, agent,
-    {
-        'agent': 1,
-        'time': 2,
-        'location': (1, 4),
-    })
-    add_constraint_to_table(constraint_table, agent,
-    {
-        'agent': 1,
-        'time': 2,
-        'location': (1, 3)
-    })
-    add_constraint_to_table(constraint_table, agent,
-    {
-        'agent': 1,
-        'time': 2,
-        'location': (1, 2)
-    })
+    # add_constraint_to_table(constraint_table, agent,
+    # {
+    #     'agent': 1,
+    #     'time': 2,
+    #     'location': (1, 4),
+    # })
+    # add_constraint_to_table(constraint_table, agent,
+    # {
+    #     'agent': 1,
+    #     'time': 2,
+    #     'location': (1, 3)
+    # })
+    # add_constraint_to_table(constraint_table, agent,
+    # {
+    #     'agent': 1,
+    #     'time': 2,
+    #     'location': (1, 2)
+    # })
 
     return constraint_table
 
@@ -122,14 +124,14 @@ def get_path(goal_node):
 
 def calculate_constraint(constraint,curr_loc, next_loc):
     location_constraints = constraint['location']
-    # if type(constraint['location']) != tuple:
-    #     location_constraints = tuple(constraint['location'])
 
-    if type(location_constraints) == tuple:
+    len = location_constraints.count(1)
+    if len == 0 and \
+            (location_constraints[0] == curr_loc and location_constraints[1] == next_loc) \
+            or (location_constraints[1] == curr_loc and location_constraints[0] == next_loc):
+        return True
+    else:
         if location_constraints == next_loc:
-            return True
-    elif type(location_constraints) == list:
-        if location_constraints[0] == curr_loc and location_constraints[1] == next_loc:
             return True
     return False
 
@@ -140,15 +142,11 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
     #               by time step, see build_constraint_table.
     if constraint_table:
         constraint_list = constraint_table.get(next_time)
-        if constraint_list:
-            for constraint in constraint_list:
-                if type(constraint) == dict and calculate_constraint(constraint,curr_loc,next_loc):
-                    return True
-                elif type(constraint) == list or type(constraint) == tuple:
-                    for constraint_value in constraint:
-                        result = calculate_constraint(constraint_value,curr_loc,next_loc)
-                        if result:
-                            return True
+        if not constraint_list:
+            constraint_list = constraint_table.get(-1)
+        for constraint in constraint_list:
+            if calculate_constraint(constraint,curr_loc,next_loc):
+                return True
     return False
 
 
@@ -191,6 +189,9 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
         #############################
         # Task 1.4: Adjust the goal test condition to handle goal constraints
         if curr['loc'] == goal_loc:
+
+            ###GOAL CHECK BEGIN####
+            #######################
             time_bound = False
             key_list = constraint_table.keys()
             for key in key_list:
@@ -209,6 +210,9 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
                                 break
             if not time_bound:
                 return get_path(curr)
+            #####################
+            ###GOAL CHECK END####
+
         for dir in range(5):
             child_loc = move(curr['loc'], dir)
             if my_map[child_loc[0]][child_loc[1]]:
@@ -223,16 +227,16 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
                 existing_node = closed_list[(child['loc'], child['g_val'])]
                 if compare_nodes(child, existing_node):
                     closed_list[(child['loc'], child['g_val'])] = child
-                    constraints.append({
-                            (child['g_val'], child['loc'])
-                    })
+                    # constraints.append({
+                    #         (child['g_val'], child['loc'])
+                    # })
 
                     push_node(open_list, child)
             else:
                 closed_list[(child['loc'], child['g_val'])] = child
-                constraints.append({
-                    (child['g_val'], child['loc'])
-                })
+                # constraints.append({
+                #     (child['g_val'], child['loc'])
+                # })
                 push_node(open_list, child)
 
     return None  # Failed to find solutions

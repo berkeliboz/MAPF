@@ -44,8 +44,19 @@ class PrioritizedPlanningSolver(object):
             #            * self.num_of_agents has the number of total agents
             #            * constraints: array of constraints to consider for future A* searches
 
-
-            ##############################
+            for index in range(len(path)):
+                constraints.append({
+                    (index,path[index])
+                })
+                if index == (len(path) -1):
+                    constraints.append({
+                        (-1, path[index])
+                    })
+            print(constraints)
+            for i in range(len(path) - 1):
+                constraints.append({
+                    (i+1, (path[i],path[i+1]))
+                })
 
         self.CPU_time = timer.time() - start_time
 
