@@ -67,31 +67,25 @@ def build_constraint_table(constraints : list, agent):
         const_list.append(constraint)
         constraint_table[set_value[0]] = const_list
 
+    #Min Sum Costs + 1.5 answer
     add_constraint_to_table(constraint_table, agent,
     {
         'agent': 1,
-        'time': 1,
-        'location': [(1, 2),(1, 3)],
+        'time': 2,
+        'location': (1, 4),
     })
     add_constraint_to_table(constraint_table, agent,
     {
         'agent': 1,
-        'time': 1,
-        'location': [(1, 2),(1, 3)],
-    })
-    add_constraint_to_table(constraint_table, agent,
-    {
-        'agent': 0,
-        'time': 10,
+        'time': 2,
         'location': (1, 3)
     })
     add_constraint_to_table(constraint_table, agent,
     {
         'agent': 1,
-        'time': 10,
-        'location': (1, 4),
+        'time': 2,
+        'location': (1, 2)
     })
-
 
     return constraint_table
 
