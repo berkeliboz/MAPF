@@ -56,6 +56,8 @@ def build_constraint_table(constraints : list, agent):
     constraint_table = dict()
 
     for constraint in constraints:
+        if agent != constraint['agent']:
+            continue
         timestep = constraint['timestep']
         if constraint_table.get(timestep):
             constraint_table.get(timestep).append(constraint)
@@ -116,18 +118,14 @@ def get_path(goal_node):
 
 def calculate_constraint(constraint,curr_loc, next_loc):
     location_constraints = constraint['loc']
-
-    print(type(location_constraints[0]))
-
-    lenght = len(location_constraints)
     # Has two elements
-    if lenght == 2:
+    if len(location_constraints) == 2:
         if (location_constraints[0] == curr_loc and location_constraints[1] == next_loc) \
             or (location_constraints[1] == curr_loc and location_constraints[0] == next_loc):
             return True
     # Has one element
     else:
-        if location_constraints == next_loc:
+        if location_constraints[0] == next_loc:
             return True
     return False
 
@@ -199,19 +197,6 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
                         if constraint.get("timestep") >= curr['g_val']:
                             time_bound = True
                             break
-
-                # for constraints_collection in contraint_list:
-                #     if type(constraints_collection) != dict:
-                #         for constraint in constraints_collection:
-                #             if constraint.get("loc")[0] == goal_loc:
-                #                 if constraint.get("timestep") >= curr['g_val']:
-                #                     time_bound = True
-                #                     break
-                #     else:
-                #         if constraints_collection.get('loc') == goal_loc:
-                #             if constraints_collection.get("timestep") >= curr['g_val']:
-                #                 time_bound = True
-                #                 break
             if not time_bound:
                 return get_path(curr)
             #####################
@@ -219,9 +204,9 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
 
         for dir in range(5):
             child_loc = move(curr['loc'], dir)
-            if my_map[child_loc[0]][child_loc[1]]:
-                continue
             if child_loc[0] < 0 or child_loc[0] >= len(my_map) or child_loc[1] == -1 or child_loc[1] >= len(max(my_map)):
+                continue
+            if my_map[child_loc[0]][child_loc[1]]:
                 continue
             if is_constrained(curr['loc'],child_loc,curr['g_val'] + 1, constraint_table):
                 continue

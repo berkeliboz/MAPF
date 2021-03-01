@@ -56,7 +56,6 @@ class PrioritizedPlanningSolver(object):
                         'timestep': -1,
                         'loc': [path[index]],
                     })
-            print(constraints)
             for i in range(len(path) - 1):
                 constraints.append({
                     'agent': agent,

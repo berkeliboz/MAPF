@@ -93,6 +93,7 @@ if __name__ == '__main__':
 
         if args.solver == "CBS":
             print("***Run CBS***")
+            print(file)
             cbs = CBSSolver(my_map, starts, goals)
             paths = cbs.find_solution(args.disjoint)
         elif args.solver == "Independent":
