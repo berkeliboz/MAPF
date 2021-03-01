@@ -51,42 +51,34 @@ def build_constraint_table(constraints : list, agent):
     ##############################
     # Task 1.2/1.3: Return a table that constains the list of constraints of
     #               the given agent for each time step. The table can be used
-    #               for a more efficient constraint violation check in the 
+    #               for a more efficient constraint violation check in the
     #               is_constrained function.
     constraint_table = dict()
 
-    for index in constraints:
-        for set_value in index:
-            constraint = {
-                'agent' : agent,
-                'time' : set_value[0],
-                'location' : set_value[1]
-            }
-        if constraint_table.get(set_value[0]):
-            constraint_table.get(set_value[0]).append(constraint)
+    for constraint in constraints:
+        timestep = constraint['timestep']
+        if constraint_table.get(timestep):
+            constraint_table.get(timestep).append(constraint)
         else:
-            const_list = list()
-            const_list.append(constraint)
-            constraint_table[set_value[0]] = const_list
-
+            constraint_table[timestep] = [constraint]
     #Min Sum Costs + 1.5 answer
     # add_constraint_to_table(constraint_table, agent,
     # {
     #     'agent': 1,
-    #     'time': 2,
-    #     'location': (1, 4),
+    #     'timestep': 2,
+    #     'loc': (1, 4),
     # })
     # add_constraint_to_table(constraint_table, agent,
     # {
     #     'agent': 1,
-    #     'time': 2,
-    #     'location': (1, 3)
+    #     'timestep': 2,
+    #     'loc': (1, 3)
     # })
     # add_constraint_to_table(constraint_table, agent,
     # {
     #     'agent': 1,
-    #     'time': 2,
-    #     'location': (1, 2)
+    #     'timestep': 2,
+    #     'loc': (1, 2)
     # })
 
     return constraint_table
@@ -96,7 +88,7 @@ def add_constraint_to_table(constraint_table, agent, constraint):
     if agent != local_agent:
         return
 
-    location = constraint['time']
+    location = constraint['timestep']
     if constraint_table.get(location):
         constraint_table[location].append(constraint)
     else:
@@ -123,14 +115,16 @@ def get_path(goal_node):
     return path
 
 def calculate_constraint(constraint,curr_loc, next_loc):
-    location_constraints = constraint['location']
+    location_constraints = constraint['loc']
 
-    len = location_constraints.count(1)
+    print(type(location_constraints[0]))
+
+    lenght = len(location_constraints)
     # Has two elements
-    if len == 0 and \
-            (location_constraints[0] == curr_loc and location_constraints[1] == next_loc) \
+    if lenght == 2:
+        if (location_constraints[0] == curr_loc and location_constraints[1] == next_loc) \
             or (location_constraints[1] == curr_loc and location_constraints[0] == next_loc):
-        return True
+            return True
     # Has one element
     else:
         if location_constraints == next_loc:
@@ -146,9 +140,10 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
         constraint_list = constraint_table.get(next_time)
         if not constraint_list:
             constraint_list = constraint_table.get(-1)
-        for constraint in constraint_list:
-            if calculate_constraint(constraint,curr_loc,next_loc):
-                return True
+        if constraint_list:
+            for constraint in constraint_list:
+                if calculate_constraint(constraint,curr_loc,next_loc):
+                    return True
     return False
 
 
@@ -192,24 +187,31 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
         # Task 1.4: Adjust the goal test condition to handle goal constraints
         if curr['loc'] == goal_loc:
 
+            # TODO: Fix me!!!
             ###GOAL CHECK BEGIN####
             #######################
             time_bound = False
             key_list = constraint_table.keys()
             for key in key_list:
                 contraint_list = list(constraint_table[key])
-                for constraints_collection in contraint_list:
-                    if type(constraints_collection) != dict:
-                        for constraint in constraints_collection:
-                            if constraint.get("location")[0] == goal_loc:
-                                if constraint.get("time") >= curr['g_val']:
-                                    time_bound = True
-                                    break
-                    else:
-                        if constraints_collection.get('location') == goal_loc:
-                            if constraints_collection.get("time") >= curr['g_val']:
-                                time_bound = True
-                                break
+                for constraint in contraint_list:
+                    if (len(constraint['loc']) == 1 and constraint['loc'][0] == goal_loc) or (len(constraint['loc']) == 2 and constraint['loc'][1] == goal_loc):
+                        if constraint.get("timestep") >= curr['g_val']:
+                            time_bound = True
+                            break
+
+                # for constraints_collection in contraint_list:
+                #     if type(constraints_collection) != dict:
+                #         for constraint in constraints_collection:
+                #             if constraint.get("loc")[0] == goal_loc:
+                #                 if constraint.get("timestep") >= curr['g_val']:
+                #                     time_bound = True
+                #                     break
+                #     else:
+                #         if constraints_collection.get('loc') == goal_loc:
+                #             if constraints_collection.get("timestep") >= curr['g_val']:
+                #                 time_bound = True
+                #                 break
             if not time_bound:
                 return get_path(curr)
             #####################
@@ -218,6 +220,8 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
         for dir in range(5):
             child_loc = move(curr['loc'], dir)
             if my_map[child_loc[0]][child_loc[1]]:
+                continue
+            if child_loc[0] < 0 or child_loc[0] >= len(my_map) or child_loc[1] == -1 or child_loc[1] >= len(max(my_map)):
                 continue
             if is_constrained(curr['loc'],child_loc,curr['g_val'] + 1, constraint_table):
                 continue
@@ -229,16 +233,9 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
                 existing_node = closed_list[(child['loc'], child['g_val'])]
                 if compare_nodes(child, existing_node):
                     closed_list[(child['loc'], child['g_val'])] = child
-                    # constraints.append({
-                    #         (child['g_val'], child['loc'])
-                    # })
-
                     push_node(open_list, child)
             else:
                 closed_list[(child['loc'], child['g_val'])] = child
-                # constraints.append({
-                #     (child['g_val'], child['loc'])
-                # })
                 push_node(open_list, child)
 
     return None  # Failed to find solutions
