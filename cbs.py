@@ -12,8 +12,26 @@ def detect_collision(path1, path2):
     #           An edge collision occurs if the robots swap their location at the same timestep.
     #           You should use "get_location(path, t)" to get the location of a robot at time t.
 
-    pass
+    max_time = max(len(path1),len(path2))
+    for time in range(max_time):
 
+        # Check Vertex collision
+        path_location_left = get_location(path1, time)
+        path_location_right = get_location(path2, time)
+
+        if path_location_right == path_location_left:
+            return {'loc': path_location_left, 'timestep': time}
+
+        # Check if next time is valid
+        if time+1 > max_time:
+            return None
+
+        # Check Edge collision
+        path_location_left_dst = get_location(path1, time+1)
+        path_location_right_dst = get_location(path2, time+1)
+        if path_location_left == path_location_right_dst and path_location_left_dst == path_location_right:
+            return {'loc': (path_location_left,path_location_left_dst), 'timestep': time}
+    return None
 
 def detect_collisions(paths):
     ##############################
@@ -21,9 +39,14 @@ def detect_collisions(paths):
     #           A collision can be represented as dictionary that contains the id of the two robots, the vertex or edge
     #           causing the collision, and the timestep at which the collision occurred.
     #           You should use your detect_collision function to find a collision between two robots.
-
-    pass
-
+    result = list()
+    number_of_paths = len(paths)
+    for path_index in range(len(paths)):
+        for other_path_index in range(path_index+1,number_of_paths):
+            collision_information = detect_collision(paths[path_index], paths[other_path_index])
+            if collision_information:
+                result.append({'a1': path_index, 'a2': other_path_index, 'loc': collision_information['loc'], 'timestep': collision_information['timestep']})
+    return result
 
 def standard_splitting(collision):
     ##############################
