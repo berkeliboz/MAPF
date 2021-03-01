@@ -57,9 +57,13 @@ def standard_splitting(collision):
     #           Edge collision: the first constraint prevents the first agent to traverse the specified edge at the
     #                          specified timestep, and the second constraint prevents the second agent to traverse the
     #                          specified edge at the specified timestep
-
-    pass
-
+    # Edge
+    if collision['loc'].count(1) == 0:
+        return [{'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep']},
+                {'agent': collision['a2'], 'loc': [collision['loc'][1],collision['loc'][0]], 'timestep': collision['timestep']}]
+    # Vertex
+    return [{'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep']},
+                {'agent': collision['a2'], 'loc': collision['loc'], 'timestep': collision['timestep']}]
 
 def disjoint_splitting(collision):
     ##############################
@@ -141,6 +145,8 @@ class CBSSolver(object):
 
         # Task 3.1: Testing
         print(root['collisions'])
+
+        root['collisions'][0] = {'a1': 0, 'a2': 1, 'loc': [(1, 4),(1, 5)], 'timestep': 3}
 
         # Task 3.2: Testing
         for collision in root['collisions']:

@@ -126,10 +126,12 @@ def calculate_constraint(constraint,curr_loc, next_loc):
     location_constraints = constraint['location']
 
     len = location_constraints.count(1)
+    # Has two elements
     if len == 0 and \
             (location_constraints[0] == curr_loc and location_constraints[1] == next_loc) \
             or (location_constraints[1] == curr_loc and location_constraints[0] == next_loc):
         return True
+    # Has one element
     else:
         if location_constraints == next_loc:
             return True
