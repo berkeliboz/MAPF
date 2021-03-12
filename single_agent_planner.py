@@ -1,7 +1,7 @@
 import heapq
 
 def move(loc, dir):
-    directions = [(0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)]
+    directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)]
     return loc[0] + directions[dir][0], loc[1] + directions[dir][1]
 
 
@@ -173,7 +173,6 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
 
     open_list = []
     closed_list = dict()
-    earliest_goal_timestep = 0
     h_value = h_values[start_loc]
     constraint_table = build_constraint_table(constraints, agent)
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None}
@@ -185,7 +184,6 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
         # Task 1.4: Adjust the goal test condition to handle goal constraints
         if curr['loc'] == goal_loc:
 
-            # TODO: Fix me!!!
             ###GOAL CHECK BEGIN####
             #######################
             time_bound = False

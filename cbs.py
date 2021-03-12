@@ -57,8 +57,8 @@ def standard_splitting(collision):
     #           Edge collision: the first constraint prevents the first agent to traverse the specified edge at the
     #                          specified timestep, and the second constraint prevents the second agent to traverse the
     #                          specified edge at the specified timestep
-    return [{'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep']},
-                {'agent': collision['a2'], 'loc': collision['loc'], 'timestep': collision['timestep']}]
+    return [{'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': False},
+                {'agent': collision['a2'], 'loc': collision['loc'], 'timestep': collision['timestep'],'positive': False}]
 
 def disjoint_splitting(collision):
     ##############################
@@ -70,9 +70,51 @@ def disjoint_splitting(collision):
     #                          specified timestep, and the second constraint prevents the same agent to traverse the
     #                          specified edge at the specified timestep
     #           Choose the agent randomly
+    if random.randint(0, 1) == 0:
+        constrain1 = {'agent': collision['a1'],
+                      'loc': collision['loc'],
+                      'timestep': collision['timestep'],
+                      'positive': True}
+        constrain2 = {'agent': collision['a1'],
+                      'loc': collision['loc'],
+                      'timestep': collision['timestep'],
+                      'positive': False}
+    else:
+        loc = list(collision['loc'])
+        loc.reverse()
 
-    pass
+        constrain1 = {'agent': collision['a2'],
+                      'loc': loc,
+                      'timestep': collision['timestep'],
+                      'positive': True}
+        constrain2 = {'agent': collision['a2'],
+                      'loc': loc,
+                      'timestep': collision['timestep'],
+                      'positive': False}
 
+    return [constrain1, constrain2]
+
+#
+# Please insert this function into "cbs.py" before "class CBSSolver"
+# is defined.
+#
+
+def paths_violate_constraint(constraint, paths):
+    assert constraint['positive'] is True
+    rst = []
+    for i in range(len(paths)):
+        if i == constraint['agent']:
+            continue
+        curr = get_location(paths[i], constraint['timestep'])
+        prev = get_location(paths[i], constraint['timestep'] - 1)
+        if len(constraint['loc']) == 1:  # vertex constraint
+            if constraint['loc'][0] == curr:
+                rst.append(i)
+        else:  # edge constraint
+            if constraint['loc'][0] == prev or constraint['loc'][1] == curr \
+                    or constraint['loc'] == [curr, prev]:
+                rst.append(i)
+    return rst
 
 class CBSSolver(object):
     """The high-level search of CBS."""
@@ -87,7 +129,7 @@ class CBSSolver(object):
         self.starts = starts
         self.goals = goals
         self.num_of_agents = len(goals)
-
+        self.total_opened = 0
         self.num_of_generated = 0
         self.num_of_expanded = 0
         self.CPU_time = 0
@@ -106,11 +148,13 @@ class CBSSolver(object):
 
     def pop_node(self):
         _, _, id, node = heapq.heappop(self.open_list)
+        self.total_opened+=1
+        print(self.total_opened)
         print("Expand node {}".format(id))
         self.num_of_expanded += 1
         return node
 
-    def find_solution(self, disjoint=True):
+    def find_solution(self, disjoint=False):
         """ Finds paths for all agents from their start locations to their goal locations
 
         disjoint    - use disjoint splitting or not
@@ -161,18 +205,36 @@ class CBSSolver(object):
                 return node_P['paths']
 
             collision = collision[0]
-            constraints = standard_splitting(collision)
+            if disjoint:
+                constraints = disjoint_splitting(collision)
+            else:
+                constraints = standard_splitting(collision)
 
             for constraint in constraints:
                 node_Q = {'cost': 0,'constraints': node_P['constraints'] + [constraint] ,'paths': node_P['paths'] + [],'collisions': []}
                 agent = constraint['agent']
                 new_path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
                     agent, node_Q['constraints'])
-                if len(new_path) > 0:
+                if new_path is not None:
                     node_Q['paths'][agent] = new_path
-                    node_Q['collisions'] = detect_collisions(node_Q['paths'])
-                    node_Q['cost'] = get_sum_of_cost(node_Q['paths'])
-                    self.push_node(node_Q)
+                    prune = False
+                    if constraint['positive']:
+                        violate_agents = paths_violate_constraint(constraint, node_Q['paths'])
+                        for violate_agent_idx in violate_agents:
+                            node_Q['constraints'].append({'agent': violate_agent_idx, 'loc': constraint['loc'],
+                                                     'timestep': constraint['timestep'], 'positive': False})
+                            temp_path = a_star(self.my_map, self.starts[violate_agent_idx],
+                                               self.goals[violate_agent_idx], self.heuristics[violate_agent_idx],
+                                               violate_agent_idx, node_Q['constraints'])
+                            if temp_path is not None:
+                                node_Q['paths'][violate_agent_idx] = temp_path
+                            else:
+                                prune = True
+                                break
+                    if not prune:
+                        node_Q['collisions'] = detect_collisions(node_Q['paths'])
+                        node_Q['cost'] = get_sum_of_cost(node_Q['paths'])
+                        self.push_node(node_Q)
 
         self.print_results(root)
         return root['paths']
