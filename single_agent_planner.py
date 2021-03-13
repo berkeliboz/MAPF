@@ -1,7 +1,7 @@
 import heapq
 
 def move(loc, dir):
-    directions = [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)]
+    directions = [(0, 0), (0, -1), (1, 0), (0, 1), (-1, 0)]
     return loc[0] + directions[dir][0], loc[1] + directions[dir][1]
 
 
@@ -46,6 +46,11 @@ def compute_heuristics(my_map, goal):
         h_values[loc] = node['cost']
     return h_values
 
+def instert_to_table(constraint_table : dict, constraint, timestep):
+    if constraint_table.get(timestep):
+        constraint_table.get(timestep).append(constraint)
+    else:
+        constraint_table[timestep] = [constraint]
 
 def build_constraint_table(constraints : list, agent):
     ##############################
@@ -56,13 +61,16 @@ def build_constraint_table(constraints : list, agent):
     constraint_table = dict()
 
     for constraint in constraints:
-        if agent != constraint['agent']:
-            continue
         timestep = constraint['timestep']
-        if constraint_table.get(timestep):
-            constraint_table.get(timestep).append(constraint)
-        else:
-            constraint_table[timestep] = [constraint]
+        if constraint['positive']:
+                if constraint['agent'] == agent:
+                    instert_to_table(constraint_table, constraint, timestep)
+                else:
+                    instert_to_table(constraint_table, {'agent': constraint['agent'], 'loc': constraint['loc'], 'timestep': constraint['timestep'], 'positive': False}, timestep)
+        else:   # negative constraint
+            if constraint['agent'] == agent:
+                instert_to_table(constraint_table, constraint, timestep)
+
     #Min Sum Costs + 1.5 answer
     # add_constraint_to_table(constraint_table, agent,
     # {
@@ -140,8 +148,13 @@ def is_constrained(curr_loc, next_loc, next_time, constraint_table):
             constraint_list = constraint_table.get(-1)
         if constraint_list:
             for constraint in constraint_list:
-                if calculate_constraint(constraint,curr_loc,next_loc):
-                    return True
+                constraint_value = calculate_constraint(constraint,curr_loc,next_loc)
+                if constraint['positive'] == False:
+                    if constraint_value:
+                        return True
+                else:
+                    if constraint_value == False:
+                        return True
     return False
 
 

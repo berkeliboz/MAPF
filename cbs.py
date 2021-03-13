@@ -70,29 +70,16 @@ def disjoint_splitting(collision):
     #                          specified timestep, and the second constraint prevents the same agent to traverse the
     #                          specified edge at the specified timestep
     #           Choose the agent randomly
-    if random.randint(0, 1) == 0:
-        constrain1 = {'agent': collision['a1'],
-                      'loc': collision['loc'],
-                      'timestep': collision['timestep'],
-                      'positive': True}
-        constrain2 = {'agent': collision['a1'],
-                      'loc': collision['loc'],
-                      'timestep': collision['timestep'],
-                      'positive': False}
+    agent = random.randint(0,1)
+    if agent == 0:
+        constraint1 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': True}
+        constraint2 = {'agent': collision['a1'], 'loc': collision['loc'], 'timestep': collision['timestep'], 'positive': False}
     else:
-        loc = list(collision['loc'])
+        loc = collision['loc'][:]
         loc.reverse()
-
-        constrain1 = {'agent': collision['a2'],
-                      'loc': loc,
-                      'timestep': collision['timestep'],
-                      'positive': True}
-        constrain2 = {'agent': collision['a2'],
-                      'loc': loc,
-                      'timestep': collision['timestep'],
-                      'positive': False}
-
-    return [constrain1, constrain2]
+        constraint1 = {'agent': collision['a2'], 'loc': loc, 'timestep': collision['timestep'], 'positive': True}
+        constraint2 = {'agent': collision['a2'], 'loc': loc, 'timestep': collision['timestep'], 'positive': False}
+    return [constraint1, constraint2]
 
 #
 # Please insert this function into "cbs.py" before "class CBSSolver"
@@ -202,6 +189,7 @@ class CBSSolver(object):
             node_P = self.pop_node()
             collision = detect_collisions(node_P['paths'])
             if len(collision) == 0:
+                self.print_results(node_P)
                 return node_P['paths']
 
             collision = collision[0]
@@ -211,27 +199,28 @@ class CBSSolver(object):
                 constraints = standard_splitting(collision)
 
             for constraint in constraints:
-                node_Q = {'cost': 0,'constraints': node_P['constraints'] + [constraint] ,'paths': node_P['paths'] + [],'collisions': []}
+                node_Q = {'cost': 0,'constraints': node_P['constraints'] + [constraint] ,'paths': list(node_P['paths']),'collisions': []}
                 agent = constraint['agent']
                 new_path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
                     agent, node_Q['constraints'])
                 if new_path is not None:
                     node_Q['paths'][agent] = new_path
-                    prune = False
+                    pruned = False
                     if constraint['positive']:
+                        pruned = False
                         violate_agents = paths_violate_constraint(constraint, node_Q['paths'])
                         for violate_agent_idx in violate_agents:
                             node_Q['constraints'].append({'agent': violate_agent_idx, 'loc': constraint['loc'],
                                                      'timestep': constraint['timestep'], 'positive': False})
-                            temp_path = a_star(self.my_map, self.starts[violate_agent_idx],
+                            possible_path = a_star(self.my_map, self.starts[violate_agent_idx],
                                                self.goals[violate_agent_idx], self.heuristics[violate_agent_idx],
                                                violate_agent_idx, node_Q['constraints'])
-                            if temp_path is not None:
-                                node_Q['paths'][violate_agent_idx] = temp_path
+                            if possible_path:
+                                node_Q['paths'][violate_agent_idx] = possible_path
                             else:
-                                prune = True
+                                pruned = True
                                 break
-                    if not prune:
+                    if not pruned:
                         node_Q['collisions'] = detect_collisions(node_Q['paths'])
                         node_Q['cost'] = get_sum_of_cost(node_Q['paths'])
                         self.push_node(node_Q)
