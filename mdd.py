@@ -20,14 +20,15 @@ def gen_mdd(start: Tuple, heuristics: Dict) -> Dict:
     mdd = {}
     queue = deque([start])
     depth = 0
-    curr_h = heuristics[start]
+    currH = heuristics[start]
     while queue:
         currLoc = queue.popleft()
 
         # Depth must increase for h to decrease. Because this is BFS, it will
         # be strictly decreasing. So I used that to determine when depth changes.
-        if heuristics[currLoc] < curr_h:
+        if heuristics[currLoc] < currH:
             depth += 1
+            currH = heuristics[currLoc]
 
         mdd[currLoc] = {'depth': depth, 'children': []}
         next_locs = __next_locations(currLoc)
@@ -37,4 +38,3 @@ def gen_mdd(start: Tuple, heuristics: Dict) -> Dict:
                     mdd[currLoc].append(loc)
                     queue.append(loc)
     return mdd
-
