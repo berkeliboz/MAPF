@@ -218,6 +218,22 @@ class CBSSolver(object):
         return no solution
             """
 
+            """
+            children = []
+            for agent in C:
+                child = generate_child(N, C)
+                if child['cost'] == N['cost'] and (len(child['collisions']) < len(N['collisions'])):
+                    N['paths'] = child['paths']
+                    N['collisions'] = child['collisions']
+                    children = [N]
+                    break
+                
+                children.append(child)
+            
+            for node in children:
+                self.push_node(node)
+            """
+
 
             for constraint in constraints:
                 node_Q = {'cost': 0,'constraints': node_P['constraints'] + [constraint] ,'paths': list(node_P['paths']),'collisions': []}
@@ -249,10 +265,14 @@ class CBSSolver(object):
         self.print_results(root)
         return root['paths']
 
-
-
-
-
+    """
+    def generate_child(node, constraint):
+        child = {'cost': 0,'constraints': node['constraints'] + [constraint] ,'paths': list(node['paths']),'collisions': []}
+        child.pathi <- Low Level(ai, CAT)??
+        child['cost'] = total cost of child['paths']
+        child['collisions'] = detect_collisions(child['paths'])
+        return child
+    """
 
 
     def print_results(self, node):
