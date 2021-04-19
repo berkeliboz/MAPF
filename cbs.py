@@ -186,8 +186,11 @@ class CBSSolver(object):
         #           Ensure to create a copy of any objects that your child nodes might inherit
 
         while len(self.open_list) > 0:
+            # get node N with lowest f from openlist
             node_P = self.pop_node()
             collision = detect_collisions(node_P['paths'])
+            
+            # if N has no conflicts, return solution (goal node)
             if len(collision) == 0:
                 self.print_results(node_P)
                 return node_P['paths']
@@ -197,6 +200,24 @@ class CBSSolver(object):
                 constraints = disjoint_splitting(collision)
             else:
                 constraints = standard_splitting(collision)
+
+            """
+            classify conflicts into types
+            C <- choose conflict(N)
+            Children <- []
+            for each agent in C,
+                generate child node N'
+                if N'.cost = N.cost and N' has less conflicts, then:
+                    N.solution <- N'.solution
+                    N.conflicts <- N'.conflicts
+                    Children <- [N]
+                    break
+                insert N' into Children
+            insert Children into openlist             
+                    
+        return no solution
+            """
+
 
             for constraint in constraints:
                 node_Q = {'cost': 0,'constraints': node_P['constraints'] + [constraint] ,'paths': list(node_P['paths']),'collisions': []}
