@@ -40,6 +40,7 @@ class MDD:
     def children_of(self, node: object) -> List:
         return [self.nodes[i] for i in node.children]
 
+
 # Helper that returns a list of all reachable positions from a given location.
 def __next_locations(location):
     return [move(location, i) for i in range(5)]
@@ -96,7 +97,6 @@ def generate_mdd(start: Tuple, maxCost: int, heuristics: Dict) -> MDD:
                         # Because this is a duplicate, the path is already calculated from this point on.
                         child = closedList[(loc, nextDepth)]
                         node.children.append(child)
-
                     else:
                         # Add new node with next depth
                         child = MDD_Node(len(mdd.nodes), loc, nextDepth)
