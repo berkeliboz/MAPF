@@ -111,7 +111,7 @@ def cross_nodes(agent_node : MDD_Node, other_node : MDD_Node, id : int) -> MDD_N
         return None
     if agent_node.location == other_node.location:
         return None
-    return MDD_Node(id, (agent_node.location,other_node.location),agent_node.depth)
+    return MDD_Node(id, (agent_node,other_node),agent_node.depth)
 
 def cross_mdds(agent_mdd : MDD, other_agent_mdd : MDD):
     cross_list = []
