@@ -188,7 +188,15 @@ class CBSSolver(object):
         while len(self.open_list) > 0:
             # get node N with lowest f from openlist
             node_P = self.pop_node()
+            
+            """
+            Tester code to make sure generate_child works
+            if len(node_P['constraints']) > 1:
+                child = self.generate_child(node_P, node_P['constraints'][0])
+            
             collision = detect_collisions(node_P['paths'])
+            """
+            
             
             # if N has no conflicts, return solution (goal node)
             if len(collision) == 0:
@@ -265,14 +273,35 @@ class CBSSolver(object):
         self.print_results(root)
         return root['paths']
 
-    """
-    def generate_child(node, constraint):
-        child = {'cost': 0,'constraints': node['constraints'] + [constraint] ,'paths': list(node['paths']),'collisions': []}
-        child.pathi <- Low Level(ai, CAT)??
-        child['cost'] = total cost of child['paths']
+    
+    def generate_child(self, node, constraint):
+        # Create new child node
+        child = {'cost': node['cost'],'constraints': [],'paths': [],'collisions': []}
+        
+        # CAT = all paths of other agents
+        agent = constraint['agent']
+        CAT = []
+        
+        # Build CAT, go through all the conflicts in the current node and add the ones that are NOT the current agent
+        # CAT is rebuilt every from scratch every new node to save memory
+        for conflict in node['constraints']:
+            if conflict['agent'] != agent:
+                CAT.append(conflict)
+        
+        # Do low level search (A*) to generate new solution for child using CAT as constraints to avoid conflicts        
+        for i in range(self.num_of_agents):
+            path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
+                          i, CAT)
+            # NOTE: path might be None, check somewhere later?
+            if path is not None:
+                child['paths'].append(path)
+        
+        # Update cost and collisions with new solution
+        child['cost'] = get_sum_of_cost(child['paths'])
         child['collisions'] = detect_collisions(child['paths'])
+
         return child
-    """
+    
 
 
     def print_results(self, node):
