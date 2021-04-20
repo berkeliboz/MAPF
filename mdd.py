@@ -66,7 +66,7 @@ def __next_locations(location):
 # TODO: Add constraint handling
 def generate_mdd(start: Tuple, maxCost: int, heuristics: Dict) -> MDD:
     # Optimal path costs more than the requested cost
-    if maxCost > heuristics[start]:
+    if maxCost < heuristics[start]:
         return None
 
     number = 0
