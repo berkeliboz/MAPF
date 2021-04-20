@@ -190,12 +190,12 @@ class CBSSolver(object):
             node_P = self.pop_node()
             
             """
-            Tester code to make sure generate_child works
+            Tester code to make sure generate_child works; can delete later
             if len(node_P['constraints']) > 1:
                 child = self.generate_child(node_P, node_P['constraints'][0])
+            """
             
             collision = detect_collisions(node_P['paths'])
-            """
             
             
             # if N has no conflicts, return solution (goal node)
