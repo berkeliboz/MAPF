@@ -2,7 +2,7 @@ import time as timer
 import heapq
 import random
 from single_agent_planner import compute_heuristics, a_star, get_location, get_sum_of_cost
-
+from mdd import generate_mdd, cross_mdds
 
 def detect_collision(path1, path2):
     ##############################
@@ -122,6 +122,7 @@ class CBSSolver(object):
         self.CPU_time = 0
 
         self.open_list = []
+        self.mdds = []
 
         # compute heuristics for the low-level search
         self.heuristics = []
@@ -159,11 +160,17 @@ class CBSSolver(object):
                 'paths': [],
                 'collisions': []}
         for i in range(self.num_of_agents):  # Find initial path for each agent
+
+            # Don't ever modify the order of MDDs
+            self.mdds.append(generate_mdd(self.starts[i], 5, self.heuristics[i]))
             path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
                           i, root['constraints'])
             if path is None:
                 raise BaseException('No solutions')
             root['paths'].append(path)
+
+        # TODO: Implement the mdd logic here, test here as well
+        #cross_mdds(self.mdds[0], self.mdds[5])
 
         root['cost'] = get_sum_of_cost(root['paths'])
         root['collisions'] = detect_collisions(root['paths'])

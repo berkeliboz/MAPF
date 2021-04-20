@@ -1,6 +1,6 @@
 ################################################################################
 # Adam Spilchen
-
+# Berke Boz
 
 
 ################################################################################
@@ -104,3 +104,46 @@ def generate_mdd(start: Tuple, maxCost: int, heuristics: Dict) -> MDD:
                         mdd.add_node(child, node)
                         queue.append(child.id)
     return mdd
+
+def cross_nodes(agent_node : MDD_Node, other_node : MDD_Node, id : int) -> MDD_Node:
+    if agent_node.depth != other_node.depth:
+        print("Can't cross nodes from different levels")
+        return None
+    if agent_node.location == other_node.location:
+        return None
+    return MDD_Node(id, (agent_node,other_node),agent_node.depth)
+
+def cross_mdds(agent_mdd : MDD, other_agent_mdd : MDD):
+    cross_list = []
+    number = 0
+    agent_open = [agent_mdd.root]
+    other_agent_open = [other_agent_mdd.root]
+
+    while len(agent_open) > 0 and len(other_agent_open) > 0:
+        agent_set = {}
+        other_set = {}
+
+        while len(agent_open) > 0:
+            agent = agent_open.pop()
+
+            for other in other_agent_open:
+                crossed_node = cross_nodes(agent, other, number)
+                if crossed_node:
+                    agent_set[agent.id] = agent
+                    other_set[other.id] = other
+                    number += 1
+                    cross_list.append(crossed_node)
+        next_level_agent_list = {}
+        next_level_other_list = {}
+        for agent_list in agent_set.values():
+            for agent in agent_mdd.children_of(agent_list):
+                next_level_agent_list[agent.id] = agent
+        for other_list in other_set.values():
+            for other in other_agent_mdd.children_of(other_list):
+                next_level_other_list[other.id] = other
+
+        agent_open = list(next_level_agent_list.values())
+        other_agent_open = list(next_level_other_list.values())
+
+    return cross_list
+
