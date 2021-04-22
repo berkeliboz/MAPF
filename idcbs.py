@@ -16,18 +16,19 @@ class MAPF_Problem:
 
 # Used to pass single agent data between functions.
 class Agent:
-    def __init__(self) -> None:
-        self.start = None
-        self.goal = None
-        self.hVals = None
-        self.constraints = None
-        pass
+    # def __init__(self) -> None:
+        # self.start = None
+        # self.goal = None
+        # self.hVals = None
+        # self.constraints = None
+        # pass
 
-    #def __init__(self, start, goal, hVals, constraints=None) -> None:
-    #    self.start = start
-    #    self.goal = goal
-    #    self.hVals = hVals
-    #    self.constraints = constraints
+    def __init__(self, start, goal, hVals, id, constraints=[]) -> None:
+       self.start = start
+       self.goal = goal
+       self.hVals = hVals
+       self.id = id
+       self.constraints = constraints
 
     class Actions(Enum):
         UP = (-1,0)
@@ -39,6 +40,8 @@ class Agent:
     def act(self, location, action):
         return location[0] + action[0], location[1] + action[1]
 
+
+from single_agent_planner import build_constraint_table, is_constrained
 # Not finished. Stateless IDA_star implementation used as a single agent solver in IDCBS.
 # TODO Add constraint handling
 class IDA_Star:
@@ -66,19 +69,20 @@ class IDA_Star:
     # limit.
     def __high_level_search(self, agent, step, bounds, limit):
         root = agent.start
+        constraintTable = build_constraint_table(agent.constraints, agent.id)
         if not bounds:
             bounds = agent.hVals[root]
         path = None
         while not path:
             if limit and bounds >= limit:
                 break
-            path = self.__low_level_search(agent, bounds)
+            path = self.__low_level_search(agent, bounds, constraintTable)
             bounds += step
         return path
 
     # DFS, runs until bounds are reached, or until goal.
     # Backtraces path from goal to build final result.
-    def __low_level_search(self, agent, bounds):
+    def __low_level_search(self, agent, bounds, constraintTable):
         node = self.Node(agent.start, None, 0)
         stack = [node]
         while stack:
@@ -89,7 +93,7 @@ class IDA_Star:
                 fVal = node.gVal + agent.hVals[node.location]
                 # Only add children that do not exceed the bounds
                 if fVal < bounds:
-                    stack += self.__expand_node(node, agent)
+                    stack += self.__expand_node(node, agent, constraintTable)
         if node.location == agent.goal:
             return self.__back_trace(node)
         else:
@@ -107,36 +111,22 @@ class IDA_Star:
 
     # Generates all children for the provided node.
     # Uses the agent to perform move actions.
-    def __expand_node(self, node, agent):
+    def __expand_node(self, node, agent, constraintTable):
         children = []
         for action in Agent.Actions:
             newLoc = agent.act(node.location, (action.value)) 
             newGVal = node.gVal + 1
-            children.append(self.Node(newLoc, node, newGVal))
+            if not is_constrained(node.location, newLoc, newGVal, constraintTable):
+                children.append(self.Node(newLoc, node, newGVal))
         return children
 
 
-# Used berkes detect_collisions function.
-from cbs import detect_collisions as dtc_colisns
-class Collision_Detector:
-    def detect_collisions(self, paths):
-        return dtc_colisns(paths)
-
-
-# This is just an example of how to make a constraint_generator.
-# The internals can be anything, as long as the generate_constraints(self, node)
-# function returns a list of constraints.
-from cbs import disjoint_splitting
-class Constraint_Generator:
-    def generate_constraints(self, node):
-        constraints = []
-        for i in node.collisions:
-            constraints += disjoint_splitting(i)
-        return constraints
 
 
 class IDCBS_Solver:
-
+    def __init__(self) -> None:
+        self.nodesGenerated = 0
+        pass
     # TODO Add proper constraint handling, and generate more nodes in depth
     #   first order to find solution.
     #
@@ -153,22 +143,7 @@ class IDCBS_Solver:
     #   node instead of collisions mainly because we can include MDDs and other data
     #   in the node later.
     def find_solution(self, problem, agentSolver, collisionDetector=None, constraintGenerator=None):
-        nodes = []
-        node = self.Node(problem.nAgents)
-        for i in range(problem.nAgents):
-            agent = Agent()
-            agent.start = problem.starts[i]
-            agent.goal = problem.goals[i]
-            agent.hVals = problem.hVals[i]
-            node.paths[i] = agentSolver.find_path(agent)
-        nodes.append(node)
-        if collisionDetector:
-            node.collisions = collisionDetector.detect_collisions(node.paths)
-        
-        if constraintGenerator:
-            node.constraints = constraintGenerator.generate_constraints(node)
-
-        return nodes[-1]
+        return self.__idcbs(problem, agentSolver, collisionDetector, constraintGenerator)
 
     # Node for the DFS search tree.
     class Node:
@@ -178,16 +153,35 @@ class IDCBS_Solver:
             self.constraints = []
             pass
 
-
-# Kept this for testing reasons.
-# Also an example of how it works.
-
-# from single_agent_planner import compute_heuristics
-# test_map = [[False for i in range(20)] for j in range(20)]
-# start = [(1,1), (1,19)]
-# goal = [(15,15), (19,1)]
-# problem = MAPF_Problem(start, goal, test_map, compute_heuristics)
-# idcbs = IDCBS_Solver()
-# node = idcbs.find_solution(problem, IDA_Star(), Collision_Detector(), Constraint_Generator())
-# print(node.collisions)
-# print(node.constraints)
+    def __push(self, stack, node):
+        stack.append(node)
+        self.nodesGenerated += 1
+    
+    def __idcbs(self, problem, agentSolver, collisionDetector, constraintGenerator):
+        node = self.Node(problem.nAgents)
+        for i in range(problem.nAgents):
+            agent = Agent(problem.starts[i], \
+                        problem.goals[i], \
+                        problem.hVals[i], \
+                        i)
+            node.paths[i] = agentSolver.find_path(agent)
+        nodeStack = [node]
+        while nodeStack:
+            node = nodeStack.pop()
+            node.collisions = collisionDetector.detect_collisions(node.paths)
+            if not node.collisions:
+                return node.paths
+            constraints = constraintGenerator.generate_constraints(node)
+            for i in constraints:
+                child = self.Node(problem.nAgents)
+                child.paths = list(node.paths)
+                child.constraints = node.constraints + [i]
+                agentID = i['agent']
+                agent = Agent(problem.starts[agentID], \
+                            problem.goals[agentID], \
+                            problem.hVals[agentID], \
+                            agentID, \
+                            constraints=child.constraints)
+                child.paths[agentID] = agentSolver.find_path(agent)
+                if child.paths[agentID]:
+                    self.__push(nodeStack, child)
