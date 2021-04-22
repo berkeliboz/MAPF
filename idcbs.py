@@ -1,5 +1,5 @@
 from collections import deque
-from enum import Enum
+from mdd import classify_collisions, Agent, generate_mdd
 
 # Used to hold all initial data for a MAPF problem.
 class MAPF_Problem:
@@ -12,34 +12,6 @@ class MAPF_Problem:
             self.hVals = [heuristics(worldMap, i) for i in goals]
         else:
             self.hVals = None
-
-
-# Used to pass single agent data between functions.
-class Agent:
-    # def __init__(self) -> None:
-        # self.start = None
-        # self.goal = None
-        # self.hVals = None
-        # self.constraints = None
-        # pass
-
-    def __init__(self, start, goal, hVals, id, constraints=[]) -> None:
-       self.start = start
-       self.goal = goal
-       self.hVals = hVals
-       self.id = id
-       self.constraints = constraints
-
-    class Actions(Enum):
-        UP = (-1,0)
-        DOWN = (1,0)
-        LEFT = (0,-1)
-        RIGHT =(0,1)
-        STAY = (0,0)
-
-    def act(self, location, action):
-        return location[0] + action[0], location[1] + action[1]
-
 
 from single_agent_planner import build_constraint_table, is_constrained
 # Not finished. Stateless IDA_star implementation used as a single agent solver in IDCBS.
@@ -159,18 +131,21 @@ class IDCBS_Solver:
     
     def __idcbs(self, problem, agentSolver, collisionDetector, constraintGenerator):
         node = self.Node(problem.nAgents)
+        mdds = []   # TODO: Find a better home for MDDs
         for i in range(problem.nAgents):
             agent = Agent(problem.starts[i], \
                         problem.goals[i], \
                         problem.hVals[i], \
                         i)
             node.paths[i] = agentSolver.find_path(agent)
+            mdds.append(generate_mdd(agent,5)) # Testing code TODO: Delete this, iterative cost deepening here
         nodeStack = [node]
         while nodeStack:
             node = nodeStack.pop()
             node.collisions = collisionDetector.detect_collisions(node.paths)
             if not node.collisions:
                 return node.paths
+            node.collisions = classify_collisions(mdds, node.collisions)
             constraints = constraintGenerator.generate_constraints(node)
             for i in constraints:
                 child = self.Node(problem.nAgents)

@@ -10,6 +10,34 @@ from single_agent_planner import move
 from collections import deque
 
 
+# Used to pass single agent data between functions.
+class Agent:
+    # def __init__(self) -> None:
+    # self.start = None
+    # self.goal = None
+    # self.hVals = None
+    # self.constraints = None
+    # pass
+
+    def __init__(self, start, goal, hVals, id, constraints=[]) -> None:
+        self.start = start
+        self.goal = goal
+        self.hVals = hVals
+        self.id = id
+        self.constraints = constraints
+        self.mdd = None
+
+    class Actions(Enum):
+        UP = (-1, 0)
+        DOWN = (1, 0)
+        LEFT = (0, -1)
+        RIGHT = (0, 1)
+        STAY = (0, 0)
+
+    def act(self, location, action):
+        return location[0] + action[0], location[1] + action[1]
+
+
 # Node to hold data. Only children IDs are stored here. Use them to access
 # the actual node in the MDD.
 class MDD_Node:
@@ -65,8 +93,10 @@ def __next_locations(location):
 # are found, they are just added as children to the current sub root.
 #
 # TODO: Add constraint handling
-def generate_mdd(start: Tuple, maxCost: int, heuristics: Dict) -> MDD:
+def generate_mdd(agent: Agent, maxCost: int) -> MDD:
     # Optimal path costs more than the requested cost
+    start = agent.start
+    heuristics = agent.hVals
     if maxCost < heuristics[start]:
         return None
 
@@ -122,20 +152,34 @@ def cross_nodes(agent_node: MDD_Node, other_node: MDD_Node, id: int) -> MDD_Node
     return MDD_Node(id, (agent_node, other_node), agent_node.depth)
 
 
-#
-# {'a1': path_index, 'a2': other_path_index, 'loc': collision_information['loc'],
-# 'timestep': collision_information['timestep']}
-#
+def classify_collisions(mdd_list: List, collisions: List) -> List:
+    prioritied_list = []
+    non_prioritied_list = []
+    for collision in collisions:
+        agent_mdd = mdd_list[collision['a1']]
+        other_mdd = mdd_list[collision['a2']]
+        if agent_mdd and other_mdd:
+            type = classify_collision(agent_mdd, other_mdd, collision)
+            if type is None:
+                non_prioritied_list.append(collision)
+            elif type is collision_type.non_cardinal:
+                non_prioritied_list.insert(0, collision)
+            elif type is collision_type.cardinal:
+                prioritied_list.insert(0, collision)
+            else:
+                prioritied_list.append(collision)
+    prioritied_list.extend(non_prioritied_list)
+    return prioritied_list
 
 def classify_collision(agent_mdd: MDD, other_agent_mdd: MDD, collision):
     if agent_mdd is None or other_agent_mdd is None:
         return None
     loc = collision['loc'][0]
 
-    agent_node_filter = filter(lambda n: n.location == loc,agent_mdd.nodes)
+    agent_node_filter = filter(lambda n: n.location == loc, agent_mdd.nodes)
     agent_path = agent_node_filter.__sizeof__() > 1
 
-    other_agent_node_filter = filter(lambda n: n.location == loc,other_agent_mdd.nodes)
+    other_agent_node_filter = filter(lambda n: n.location == loc, other_agent_mdd.nodes)
     other_path = other_agent_node_filter.__sizeof__() > 1
 
     if agent_path and other_path:
@@ -144,6 +188,9 @@ def classify_collision(agent_mdd: MDD, other_agent_mdd: MDD, collision):
         return collision_type.cardinal
     return collision_type.semi_cardinal
 
+
+# Issues: JointMDD's are missing their child information. Berke is not smart enough
+# to find a method to initialize it in a smart way.
 def cross_mdds(agent_mdd: MDD, other_agent_mdd: MDD):
     cross_list = []
     number = 0
@@ -153,10 +200,8 @@ def cross_mdds(agent_mdd: MDD, other_agent_mdd: MDD):
     while len(agent_open) > 0 and len(other_agent_open) > 0:
         agent_set = {}
         other_set = {}
-
         while len(agent_open) > 0:
             agent = agent_open.pop()
-
             for other in other_agent_open:
                 crossed_node = cross_nodes(agent, other, number)
                 if crossed_node:
