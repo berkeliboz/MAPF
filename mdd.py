@@ -98,7 +98,6 @@ def generate_mdd(start: Tuple, maxCost: int, heuristics: Dict) -> MDD:
                         # Because this is a duplicate, the path is already calculated from this point on.
                         child = closedList[(loc, nextDepth)]
                         node.children.append(child)
-
                     else:
                         # Add new node with next depth
                         child = MDD_Node(len(mdd.nodes), loc, nextDepth)
