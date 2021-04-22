@@ -120,6 +120,7 @@ class CBSSolver(object):
         self.num_of_generated = 0
         self.num_of_expanded = 0
         self.CPU_time = 0
+        self.CAT = []
 
         self.open_list = []
         self.mdds = []
@@ -175,6 +176,9 @@ class CBSSolver(object):
         root['cost'] = get_sum_of_cost(root['paths'])
         root['collisions'] = detect_collisions(root['paths'])
         self.push_node(root)
+        
+        # Initialize CAT to paths in the root node
+        self.CAT = root['paths']
 
         # Task 3.1: Testing
         print(root['collisions'])
@@ -202,6 +206,7 @@ class CBSSolver(object):
             if len(node_P['constraints']) > 1:
                 child = self.generate_child(node_P, node_P['constraints'][0])
             """
+            
             
             collision = detect_collisions(node_P['paths'])
             
@@ -284,10 +289,13 @@ class CBSSolver(object):
     
     def generate_child(self, node, constraint):
         # Create new child node
-        child = {'cost': node['cost'],'constraints': [],'paths': [],'collisions': []}
+        child = {'cost': node['cost'],'constraints': node['constraints'] + [constraint],'paths': node['paths'],'collisions': []}
         
         # CAT = all paths of other agents
         agent = constraint['agent']
+        
+        """
+        *this builds CAT from scratch*
         CAT = []
         
         # Build CAT, go through all the conflicts in the current node and add the ones that are NOT the current agent
@@ -295,6 +303,7 @@ class CBSSolver(object):
         for conflict in node['constraints']:
             if conflict['agent'] != agent:
                 CAT.append(conflict)
+
         
         # Do low level search (A*) to generate new solution for child using CAT as constraints to avoid conflicts        
         for i in range(self.num_of_agents):
@@ -303,6 +312,28 @@ class CBSSolver(object):
             # NOTE: path might be None, check somewhere later?
             if path is not None:
                 child['paths'].append(path)
+        """
+        
+        # Using global CAT, the path that is going to be replanned is removed
+        # Then, when the low-level search finishes, the
+        # newly-planned path is incorporated into the CAT and the DFS continues.
+        
+        # Path that is going to be replanned is removed
+        self.CAT.pop(agent)
+
+        # Replanned path with updated constraint
+        path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent], agent, child['constraints'])
+        
+        # Update CAT and child paths
+        if path is None:
+            self.CAT.insert(agent, node['paths'][agent])    
+        else:    
+            child['paths'][agent] = path
+        
+            # Insert updated path into CAT
+            self.CAT.insert(agent, path)
+
+        
         
         # Update cost and collisions with new solution
         child['cost'] = get_sum_of_cost(child['paths'])
