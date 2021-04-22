@@ -10,7 +10,7 @@ class Collision_Detector:
 # This is just an example of how to make a constraint_generator.
 # The internals can be anything, as long as the generate_constraints(self, node)
 # function returns a list of constraints.
-from cbs import disjoint_splitting
+from cbs import disjoint_splitting, standard_splitting
 class Constraint_Generator:
     def generate_constraints(self, node):
         constraints = []
@@ -18,6 +18,8 @@ class Constraint_Generator:
             constraints += disjoint_splitting(i)
         return constraints
 
+    def generate_constraints_single(self, collision):
+        return standard_splitting(collision)
 
 #  Kept this for testing reasons.
 #  Also an example of how it works.

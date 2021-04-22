@@ -92,12 +92,15 @@ class IDA_Star:
                 children.append(self.Node(newLoc, node, newGVal))
         return children
 
-
+class Conflict_avoidance_table:
+    def __init__(self):
+        pass
 
 
 class IDCBS_Solver:
     def __init__(self) -> None:
         self.nodesGenerated = 0
+        self.conflict_avoidance_table = Conflict_avoidance_table()
         pass
     # TODO Add proper constraint handling, and generate more nodes in depth
     #   first order to find solution.
@@ -123,7 +126,30 @@ class IDCBS_Solver:
             self.paths = [[] for i in range(nAgents)]
             self.collisions = []
             self.constraints = []
+            self.cost = 0
             pass
+
+        def calculate_sum_of_cost(self):
+            rst = 0
+            for path in self.paths:
+                rst += len(path) - 1
+            self.cost = rst
+
+    def generate_child(self, node : Node, constraint, problem, agentSolver, collisionDetector):
+        child = self.Node(problem.nAgents)
+        child.constraints = node.constraints + [constraint]
+        child.paths = node.paths
+        agentID = constraint['agent']
+        agent = Agent(problem.starts[agentID], \
+                    problem.goals[agentID], \
+                    problem.hVals[agentID], \
+                    agentID, \
+                    constraints=child.constraints)
+        if agentSolver.find_path(agent) is not None:
+            child.paths[agentID] = agentSolver.find_path(agent)
+        child.collisions = collisionDetector.detect_collisions(child.paths)
+        child.calculate_sum_of_cost()
+        return child
 
     def __push(self, stack, node):
         stack.append(node)
@@ -138,25 +164,42 @@ class IDCBS_Solver:
                         problem.hVals[i], \
                         i)
             node.paths[i] = agentSolver.find_path(agent)
-            mdds.append(generate_mdd(agent,5)) # Testing code TODO: Delete this, iterative cost deepening here
+            node.calculate_sum_of_cost()
+            mdds.append(generate_mdd(agent,20)) # Testing code TODO: Delete this, iterative cost deepening here
         nodeStack = [node]
         while nodeStack:
+            print(self.nodesGenerated)
             node = nodeStack.pop()
             node.collisions = collisionDetector.detect_collisions(node.paths)
             if not node.collisions:
                 return node.paths
             node.collisions = classify_collisions(mdds, node.collisions)
-            constraints = constraintGenerator.generate_constraints(node)
-            for i in constraints:
-                child = self.Node(problem.nAgents)
-                child.paths = list(node.paths)
-                child.constraints = node.constraints + [i]
-                agentID = i['agent']
-                agent = Agent(problem.starts[agentID], \
-                            problem.goals[agentID], \
-                            problem.hVals[agentID], \
-                            agentID, \
-                            constraints=child.constraints)
-                child.paths[agentID] = agentSolver.find_path(agent)
-                if child.paths[agentID]:
-                    self.__push(nodeStack, child)
+
+            children = []
+            collision = node.collisions.pop(0)
+            constraints = constraintGenerator.generate_constraints_single(collision)
+            for constraint in constraints:
+                child = self.generate_child(node, constraint, problem, agentSolver, collisionDetector)
+                if node.cost == child.cost and len(child.collisions) < len(node.collisions):
+                    node.paths = child.paths
+                    node.collisions = child.collisions
+                    children = [node]
+                    break
+                children.append(child)
+            nodeStack.extend(children)
+            self.nodesGenerated += len(children)
+
+            # constraints = constraintGenerator.generate_constraints(node)
+            # for i in constraints:
+            #     child = self.Node(problem.nAgents)
+            #     child.paths = list(node.paths)
+            #     child.constraints = node.constraints + [i]
+            #     agentID = i['agent']
+            #     agent = Agent(problem.starts[agentID], \
+            #                 problem.goals[agentID], \
+            #                 problem.hVals[agentID], \
+            #                 agentID, \
+            #                 constraints=child.constraints)
+            #     child.paths[agentID] = agentSolver.find_path(agent)
+            #     if child.paths[agentID]:
+            #         self.__push(nodeStack, child)
