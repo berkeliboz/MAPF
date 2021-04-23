@@ -127,6 +127,7 @@ class IDCBS_Solver:
             self.collisions = []
             self.constraints = []
             self.cost = 0
+            self.f_values = 0 # TODO: F value = H val + cost
             pass
 
         def calculate_sum_of_cost(self):
@@ -165,7 +166,9 @@ class IDCBS_Solver:
                         i)
             node.paths[i] = agentSolver.find_path(agent)
             node.calculate_sum_of_cost()
-            mdds.append(generate_mdd(agent,40)) # Testing code TODO: Delete this, iterative cost deepening here
+
+            mdds.append(generate_mdd(agent,20)) # TODO: Delete this, iterative cost deepening here
+                                                # TODO: MDD's should be generated only when needed, in collision detector
         nodeStack = [node]
         while nodeStack:
             print(self.nodesGenerated)
