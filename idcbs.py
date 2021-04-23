@@ -174,35 +174,39 @@ class IDCBS_Solver:
             print(self.nodesGenerated)
             node = nodeStack.pop()
             node.collisions = collisionDetector.detect_collisions(node.paths)
+            
+            print("COUNT: ", collisionDetector.count_collisions(node.paths))
             if not node.collisions:
                 return node.paths
-            node.collisions = classify_collisions(mdds, node.collisions)
+              
+#            node.collisions = classify_collisions(mdds, node.collisions)
+#
+#            children = []
+#            collision = node.collisions.pop(0)
+#            constraints = constraintGenerator.generate_constraints_single(collision)
+#            for constraint in constraints:
+#                child = self.generate_child(node, constraint, problem, agentSolver, collisionDetector)
+#                if node.cost == child.cost and len(child.collisions) < len(node.collisions):
+#                    node.paths = child.paths
+#                    node.collisions = child.collisions
+#                    children = [node]
+#                    break
+#                children.append(child)
+#            nodeStack.extend(children)
+#            self.nodesGenerated += len(children)
 
-            children = []
-            collision = node.collisions.pop(0)
-            constraints = constraintGenerator.generate_constraints_single(collision)
-            for constraint in constraints:
-                child = self.generate_child(node, constraint, problem, agentSolver, collisionDetector)
-                if node.cost == child.cost and len(child.collisions) < len(node.collisions):
-                    node.paths = child.paths
-                    node.collisions = child.collisions
-                    children = [node]
-                    break
-                children.append(child)
-            nodeStack.extend(children)
-            self.nodesGenerated += len(children)
+            constraints = constraintGenerator.generate_constraints(node)
+            for i in constraints:
+                child = self.Node(problem.nAgents)
+                child.paths = list(node.paths)
+                child.constraints = node.constraints + [i]
+                agentID = i['agent']
+                agent = Agent(problem.starts[agentID], \
+                            problem.goals[agentID], \
+                            problem.hVals[agentID], \
+                            agentID, \
+                            constraints=child.constraints)
+                child.paths[agentID] = agentSolver.find_path(agent)
+                if child.paths[agentID]:
+                    self.__push(nodeStack, child)
 
-            # constraints = constraintGenerator.generate_constraints(node)
-            # for i in constraints:
-            #     child = self.Node(problem.nAgents)
-            #     child.paths = list(node.paths)
-            #     child.constraints = node.constraints + [i]
-            #     agentID = i['agent']
-            #     agent = Agent(problem.starts[agentID], \
-            #                 problem.goals[agentID], \
-            #                 problem.hVals[agentID], \
-            #                 agentID, \
-            #                 constraints=child.constraints)
-            #     child.paths[agentID] = agentSolver.find_path(agent)
-            #     if child.paths[agentID]:
-            #         self.__push(nodeStack, child)
