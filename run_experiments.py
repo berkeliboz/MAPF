@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import argparse
 import glob
+import idcbs
 from pathlib import Path
 from cbs import CBSSolver
 from independent import IndependentSolver
@@ -10,6 +11,13 @@ from visualize import Animation
 from single_agent_planner import get_sum_of_cost, get_location, compute_heuristics, a_star
 
 SOLVER = "CBS"
+
+class Standard_Solver:
+    def __init__(self, myMap):
+        self.myMap = myMap
+        
+    def find_path(self, agent):
+        return a_star(self.myMap, agent.start, agent.goal, agent.hVals, agent.id, agent.constraints)
 
 def print_mapf_instance(my_map, starts, goals):
     print('Start locations')
