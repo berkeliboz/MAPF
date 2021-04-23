@@ -93,10 +93,8 @@ def __next_locations(location):
 # are found, they are just added as children to the current sub root.
 #
 # TODO: Add constraint handling
-def generate_mdd(agent: Agent, maxCost: int) -> MDD:
+def generate_mdd(start, heuristics, maxCost: int) -> MDD:
     # Optimal path costs more than the requested cost
-    start = agent.start
-    heuristics = agent.hVals
     if maxCost < heuristics[start]:
         return None
 
