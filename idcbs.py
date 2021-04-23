@@ -165,7 +165,7 @@ class IDCBS_Solver:
                         i)
             node.paths[i] = agentSolver.find_path(agent)
             node.calculate_sum_of_cost()
-            mdds.append(generate_mdd(agent,20)) # Testing code TODO: Delete this, iterative cost deepening here
+            mdds.append(generate_mdd(agent,40)) # Testing code TODO: Delete this, iterative cost deepening here
         nodeStack = [node]
         while nodeStack:
             print(self.nodesGenerated)
