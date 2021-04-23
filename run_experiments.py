@@ -6,7 +6,8 @@ from cbs import CBSSolver
 from independent import IndependentSolver
 from prioritized import PrioritizedPlanningSolver
 from visualize import Animation
-from single_agent_planner import get_sum_of_cost
+
+from single_agent_planner import get_sum_of_cost, get_location, compute_heuristics, a_star
 
 SOLVER = "CBS"
 
@@ -69,6 +70,56 @@ def import_mapf_instance(filename):
     return my_map, starts, goals
 
 
+from cbs import detect_collisions as dtc_colisns
+class Collision_Detector:
+    def detect_collisions(self, paths):
+        return dtc_colisns(paths)
+    
+    def count_collision(self, path1, path2):
+        count = 0
+        max_time = max(len(path1),len(path2))
+        for time in range(max_time):
+            # Check Vertex collision
+            path_location_left = get_location(path1, time)
+            path_location_right = get_location(path2, time)
+    
+            if path_location_right == path_location_left:
+                count += 1
+    
+            # Check if next time is valid
+            if time+1 > max_time:
+                return count
+    
+            # Check Edge collision
+            path_location_left_dst = get_location(path1, time+1)
+            path_location_right_dst = get_location(path2, time+1)
+            if path_location_left == path_location_right_dst and path_location_left_dst == path_location_right:
+                count += 1
+    
+        return count    
+    
+    def count_collisions(self, paths):
+        number_of_paths = len(paths)
+        for path_index in range(len(paths)):
+            for other_path_index in range(path_index+1,number_of_paths):
+                count = self.count_collision(paths[path_index], paths[other_path_index])
+
+        return count
+
+# This is just an example of how to make a constraint_generator.
+# The internals can be anything, as long as the generate_constraints(self, node)
+# function returns a list of constraints.
+from cbs import disjoint_splitting, standard_splitting
+class Constraint_Generator:
+    def generate_constraints(self, node):
+        constraints = []
+        for i in node.collisions:
+            constraints += disjoint_splitting(i)
+        return constraints
+
+    def generate_constraints_single(self, collision):
+        return standard_splitting(collision)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Runs various MAPF algorithms')
     parser.add_argument('--instance', type=str, default=None,
@@ -104,6 +155,13 @@ if __name__ == '__main__':
             print("***Run Prioritized***")
             solver = PrioritizedPlanningSolver(my_map, starts, goals)
             paths = solver.find_solution()
+        elif args.solver == "IDCBS":
+            print("***Run IDCBS***")
+            problem = idcbs.MAPF_Problem(starts, goals, my_map, compute_heuristics)
+            solver = idcbs.IDCBS_Solver()
+            single_agent_solver = Standard_Solver(my_map)
+            paths = solver.find_solution(problem, idcbs.IDA_Star(), Collision_Detector(), Constraint_Generator())
+            print(paths)
         else:
             raise RuntimeError("Unknown solver!")
 
