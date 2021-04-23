@@ -132,10 +132,7 @@ class IDCBS_Solver:
             pass
 
     def __calculate_gVal(self, node):
-        cost = 0
-        for path in node.paths:
-            cost += len(path) - 1
-        return cost
+        return len(node.constraints)
 
 
     def __calculate_hVal(self, node, heuristic):
@@ -201,13 +198,15 @@ class IDCBS_Solver:
     def __high_level_search(self, problem, agentSolver, collisionDetector, constraintGenerator):
         bounds = 0
         # initial bounds
-        for i in range(problem.nAgents):
-            start = problem.starts[i]
-            bounds += problem.hVals[i][start]
+        #for i in range(problem.nAgents):
+         #   start = problem.starts[i]
+          #  bounds += problem.hVals[i][start]
         solution = None
         while not solution:
             solution, minF = self.__low_level_search(problem, agentSolver, collisionDetector, constraintGenerator, bounds)
-            bounds = minF
+            print("MINF: ", minF)
+            bounds += minF
+            print("BOUNDS: ", bounds)
         return solution
 
 
@@ -228,7 +227,7 @@ class IDCBS_Solver:
             if node.gVal + node.hVal > bounds:
                 continue
 
-            minF = min(minF, node.gVal + node.hVal)
+            minF = max(minF, node.gVal + node.hVal)
             node.collisions = collisionDetector.detect_collisions(node.paths)
             if len(node.collisions) == 0:
                 return node.paths, minF
