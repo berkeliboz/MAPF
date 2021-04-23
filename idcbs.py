@@ -127,14 +127,20 @@ class IDCBS_Solver:
             self.collisions = []
             self.constraints = []
             self.cost = 0
-            self.f_values = 0 # TODO: F value = H val + cost
+            self.hVal = 0
+            self.gVal = 0
             pass
 
-        def calculate_sum_of_cost(self):
-            rst = 0
-            for path in self.paths:
-                rst += len(path) - 1
-            self.cost = rst
+    def __calculate_gVal(self, node):
+        cost = 0
+        for path in node.paths:
+            cost += len(path) - 1
+        return cost
+
+
+    def __calculate_hVal(self, node, heuristic):
+        return heuristic(node.paths)
+
 
     def generate_child(self, node : Node, constraint, problem, agentSolver, collisionDetector):
         child = self.Node(problem.nAgents)
@@ -157,45 +163,78 @@ class IDCBS_Solver:
         self.nodesGenerated += 1
     
     def __idcbs(self, problem, agentSolver, collisionDetector, constraintGenerator):
+        return self.__high_level_search(problem, agentSolver, collisionDetector, constraintGenerator)
+        # node = self.Node(problem.nAgents)
+# 
+        # for i in range(problem.nAgents):
+            # agent = Agent(problem.starts[i], \
+                        # problem.goals[i], \
+                        # problem.hVals[i], \
+                        # i)
+            # node.paths[i] = agentSolver.find_path(agent)
+            # node.calculate_sum_of_cost()
+# 
+        # nodeStack = [node]
+        # while nodeStack:
+            # node = nodeStack.pop()
+            # node.collisions = collisionDetector.detect_collisions(node.paths)
+            # 
+            # if not node.collisions:
+                # return node.paths
+# 
+            # constraints = constraintGenerator.generate_constraints(node)
+            # for i in constraints:
+                # child = self.Node(problem.nAgents)
+                # child.paths = list(node.paths)
+                # child.constraints = node.constraints + [i]
+                # agentID = i['agent']
+                # agent = Agent(problem.starts[agentID], \
+                            # problem.goals[agentID], \
+                            # problem.hVals[agentID], \
+                            # agentID, \
+                            # constraints=child.constraints)
+                # child.paths[agentID] = agentSolver.find_path(agent)
+                # if child.paths[agentID]:
+                    # self.__push(nodeStack, child)
+# 
+# 
+    def __high_level_search(self, problem, agentSolver, collisionDetector, constraintGenerator):
+        bounds = 0
+        # initial bounds
+        for i in range(problem.nAgents):
+            start = problem.starts[i]
+            bounds += problem.hVals[i][start]
+        solution = None
+        while not solution:
+            solution, minF = self.__low_level_search(problem, agentSolver, collisionDetector, constraintGenerator, bounds)
+            bounds = minF
+        return solution
+
+
+    def __low_level_search(self, problem, agentSolver, collisionDetector, constraintGenerator, bounds):
         node = self.Node(problem.nAgents)
-        mdds = []   # TODO: Find a better home for MDDs
         for i in range(problem.nAgents):
             agent = Agent(problem.starts[i], \
                         problem.goals[i], \
                         problem.hVals[i], \
                         i)
             node.paths[i] = agentSolver.find_path(agent)
-            node.calculate_sum_of_cost()
-
-            mdds.append(generate_mdd(agent,20)) # TODO: Delete this, iterative cost deepening here
-                                                # TODO: MDD's should be generated only when needed, in collision detector
+        node.gVal = self.__calculate_gVal(node)
+        node.hVal = self.__calculate_hVal(node, collisionDetector.count_collisions)
+        minF = node.gVal + node.hVal
         nodeStack = [node]
         while nodeStack:
-            print(self.nodesGenerated)
             node = nodeStack.pop()
-            node.collisions = collisionDetector.detect_collisions(node.paths)
-            
-            print("COUNT: ", collisionDetector.count_collisions(node.paths))
-            if not node.collisions:
-                return node.paths
-              
-#            node.collisions = classify_collisions(mdds, node.collisions)
-#
-#            children = []
-#            collision = node.collisions.pop(0)
-#            constraints = constraintGenerator.generate_constraints_single(collision)
-#            for constraint in constraints:
-#                child = self.generate_child(node, constraint, problem, agentSolver, collisionDetector)
-#                if node.cost == child.cost and len(child.collisions) < len(node.collisions):
-#                    node.paths = child.paths
-#                    node.collisions = child.collisions
-#                    children = [node]
-#                    break
-#                children.append(child)
-#            nodeStack.extend(children)
-#            self.nodesGenerated += len(children)
+            if node.gVal + node.hVal > bounds:
+                continue
 
+            minF = min(minF, node.gVal + node.hVal)
+            node.collisions = collisionDetector.detect_collisions(node.paths)
+            if len(node.collisions) == 0:
+                return node.paths, minF
+            
             constraints = constraintGenerator.generate_constraints(node)
+            children = []
             for i in constraints:
                 child = self.Node(problem.nAgents)
                 child.paths = list(node.paths)
@@ -208,5 +247,9 @@ class IDCBS_Solver:
                             constraints=child.constraints)
                 child.paths[agentID] = agentSolver.find_path(agent)
                 if child.paths[agentID]:
-                    self.__push(nodeStack, child)
-
+                    child.gVal = self.__calculate_gVal(child)
+                    child.hVal = self.__calculate_hVal(child, collisionDetector.count_collisions)
+                    children.append(child)
+            children.sort(key=lambda c : c.hVal + c.gVal, reverse=True)
+            nodeStack += children
+        return None, minF
