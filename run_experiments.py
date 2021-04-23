@@ -91,15 +91,38 @@ def import_mapf_instance(filename):
 # The internals can be anything, as long as the generate_constraints(self, node)
 # function returns a list of constraints.
 from cbs import disjoint_splitting, standard_splitting
+from mdd import generate_mdd
 class Constraint_Generator:
+    def __init__(self, h_vals, starts):
+        self.h_vals = h_vals
+        self.starts = starts
+
     def generate_constraints(self, node):
+        mdds = {}
         constraints = []
+
         for i in node.collisions:
+            agents = [i['a1'], i['a2']]
+            for agent in agents:
+                if mdds.get(agent) is None:
+                    start = self.starts[agent]
+                    maxCost = self.h_vals[agent][start]
+                    mdd = generate_mdd(start, self.h_vals[agent], maxCost)
+                    while mdd is None:
+                        maxCost += 1
+                        mdd = generate_mdd(self.starts[agent], self.h_vals[agent], maxCost)
+                    mdds[agent] = mdd
+
             constraints += disjoint_splitting(i)
         return constraints
 
+    # Deprecated
     def generate_constraints_single(self, collision):
         return standard_splitting(collision)
+
+#  Kept this for testing reasons.
+#  Also an example of how it works.
+
 
 from cbs import detect_collisions as dtc_colisns
 class Collision_Detector:
@@ -179,7 +202,7 @@ if __name__ == '__main__':
             solver = idcbs.IDCBS_Solver()
 
             goofy_solver = Goofy_single_agent_planner(my_map)
-            paths = solver.find_solution(problem, goofy_solver, Collision_Detector(), Constraint_Generator())
+            paths = solver.find_solution(problem, goofy_solver, Collision_Detector(), Constraint_Generator(problem.hVals, problem.starts))
 
         else:
             raise RuntimeError("Unknown solver!")
