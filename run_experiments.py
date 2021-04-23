@@ -8,6 +8,7 @@ from independent import IndependentSolver
 from prioritized import PrioritizedPlanningSolver
 from visualize import Animation
 
+
 from single_agent_planner import get_sum_of_cost, get_location, compute_heuristics, a_star
 
 SOLVER = "CBS"
@@ -18,6 +19,15 @@ class Standard_Solver:
         
     def find_path(self, agent):
         return a_star(self.myMap, agent.start, agent.goal, agent.hVals, agent.id, agent.constraints)
+
+class Goofy_single_agent_planner:
+    def __init__(self, map):
+        self.map = map
+
+    # a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
+    def find_path(self, agent):
+        return a_star(self.map, agent.start, agent.goal, agent.hVals, agent.id, agent.constraints)
+
 
 def print_mapf_instance(my_map, starts, goals):
     print('Start locations')
@@ -77,6 +87,24 @@ def import_mapf_instance(filename):
     f.close()
     return my_map, starts, goals
 
+from cbs import detect_collisions as dtc_colisns
+class Collision_Detector:
+    def detect_collisions(self, paths):
+        return dtc_colisns(paths)
+
+# This is just an example of how to make a constraint_generator.
+# The internals can be anything, as long as the generate_constraints(self, node)
+# function returns a list of constraints.
+from cbs import disjoint_splitting, standard_splitting
+class Constraint_Generator:
+    def generate_constraints(self, node):
+        constraints = []
+        for i in node.collisions:
+            constraints += disjoint_splitting(i)
+        return constraints
+
+    def generate_constraints_single(self, collision):
+        return standard_splitting(collision)
 
 from cbs import detect_collisions as dtc_colisns
 class Collision_Detector:
@@ -167,12 +195,15 @@ if __name__ == '__main__':
             print("***Run IDCBS***")
             problem = idcbs.MAPF_Problem(starts, goals, my_map, compute_heuristics)
             solver = idcbs.IDCBS_Solver()
-            single_agent_solver = Standard_Solver(my_map)
-            paths = solver.find_solution(problem, idcbs.IDA_Star(), Collision_Detector(), Constraint_Generator())
-            print(paths)
+
+            goofy_solver = Goofy_single_agent_planner(my_map)
+            paths = solver.find_solution(problem, goofy_solver, Collision_Detector(), Constraint_Generator())
+
         else:
             raise RuntimeError("Unknown solver!")
-
+        # problem = idcbs.MAPF_Problem(start, goal, test_map, compute_heuristics)
+        # solver = idcbs.IDCBS_Solver()
+        # solution = solver.find_solution(problem, idcbs.IDA_Star(), Collision_Detector(), Constraint_Generator())
         cost = get_sum_of_cost(paths)
         result_file.write("{},{}\n".format(file, cost))
 
