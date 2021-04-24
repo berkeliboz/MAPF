@@ -2,32 +2,15 @@
 import argparse
 import glob
 import idcbs
+import idcbs_plugins
 from pathlib import Path
 from cbs import CBSSolver
 from independent import IndependentSolver
 from prioritized import PrioritizedPlanningSolver
 from visualize import Animation
-
-
-from single_agent_planner import get_sum_of_cost, get_location, compute_heuristics, a_star
+from single_agent_planner import get_sum_of_cost
 
 SOLVER = "CBS"
-
-class Standard_Solver:
-    def __init__(self, myMap):
-        self.myMap = myMap
-        
-    def find_path(self, agent):
-        return a_star(self.myMap, agent.start, agent.goal, agent.hVals, agent.id, agent.constraints)
-
-class Goofy_single_agent_planner:
-    def __init__(self, map):
-        self.map = map
-
-    # a_star(my_map, start_loc, goal_loc, h_values, agent, constraints : list):
-    def find_path(self, agent):
-        return a_star(self.map, agent.start, agent.goal, agent.hVals, agent.id, agent.constraints)
-
 
 def print_mapf_instance(my_map, starts, goals):
     print('Start locations')
@@ -87,78 +70,6 @@ def import_mapf_instance(filename):
     f.close()
     return my_map, starts, goals
 
-# This is just an example of how to make a constraint_generator.
-# The internals can be anything, as long as the generate_constraints(self, node)
-# function returns a list of constraints.
-from cbs import disjoint_splitting, standard_splitting
-from mdd import generate_mdd
-class Constraint_Generator:
-    def __init__(self, h_vals, starts):
-        self.h_vals = h_vals
-        self.starts = starts
-
-    def generate_constraints(self, node):
-        mdds = {}
-        constraints = []
-
-        for i in node.collisions:
-            agents = [i['a1'], i['a2']]
-            for agent in agents:
-                if mdds.get(agent) is None:
-                    start = self.starts[agent]
-                    maxCost = self.h_vals[agent][start]
-                    mdd = generate_mdd(start, self.h_vals[agent], maxCost)
-                    while mdd is None:
-                        maxCost += 1
-                        mdd = generate_mdd(self.starts[agent], self.h_vals[agent], maxCost)
-                    mdds[agent] = mdd
-
-            constraints += disjoint_splitting(i)
-        return constraints
-
-    # Deprecated
-    def generate_constraints_single(self, collision):
-        return standard_splitting(collision)
-
-#  Kept this for testing reasons.
-#  Also an example of how it works.
-
-
-from cbs import detect_collisions as dtc_colisns
-class Collision_Detector:
-    def detect_collisions(self, paths):
-        return dtc_colisns(paths)
-    
-    def count_collision(self, path1, path2):
-        count = 0
-        max_time = max(len(path1),len(path2))
-        for time in range(max_time):
-            # Check Vertex collision
-            path_location_left = get_location(path1, time)
-            path_location_right = get_location(path2, time)
-    
-            if path_location_right == path_location_left:
-                count += 1
-    
-            # Check if next time is valid
-            if time+1 > max_time:
-                return count
-    
-            # Check Edge collision
-            path_location_left_dst = get_location(path1, time+1)
-            path_location_right_dst = get_location(path2, time+1)
-            if path_location_left == path_location_right_dst and path_location_left_dst == path_location_right:
-                count += 1
-    
-        return count    
-    
-    def count_collisions(self, paths):
-        number_of_paths = len(paths)
-        count = 0
-        for path_index in range(len(paths)):
-            for other_path_index in range(path_index+1,number_of_paths):
-                count = self.count_collision(paths[path_index], paths[other_path_index])
-        return count
 
 
 if __name__ == '__main__':
@@ -198,12 +109,19 @@ if __name__ == '__main__':
             paths = solver.find_solution()
         elif args.solver == "IDCBS":
             print("***Run IDCBS***")
+
+            from single_agent_planner import compute_heuristics
+
             problem = idcbs.MAPF_Problem(starts, goals, my_map, compute_heuristics)
-            solver = idcbs.IDCBS_Solver()
-
-            goofy_solver = Goofy_single_agent_planner(my_map)
-            paths = solver.find_solution(problem, goofy_solver, Collision_Detector(), Constraint_Generator(problem.hVals, problem.starts))
-
+            mapfSolver = idcbs.IDCBS_Solver()
+            singleAgentSolver = idcbs_plugins.Standard_Solver(my_map)
+            # collisionDetector = idcbs_plugins.Collision_Detector_A()
+            collisionDetector = idcbs_plugins.Collision_Detector_B()
+            constraintGenerator = idcbs_plugins.Basic_Constraint_Generator()
+            paths = mapfSolver.find_solution(problem, singleAgentSolver, collisionDetector, constraintGenerator)
+            print("Nodes generated: {}".format(mapfSolver.nodesGenerated))
+            print("Nodes expanded: {}".format(mapfSolver.nodesExpanded))
+            print("Maximum DFS bounds: {}".format(mapfSolver.maximumDFSBounds))
         else:
             raise RuntimeError("Unknown solver!")
         # problem = idcbs.MAPF_Problem(start, goal, test_map, compute_heuristics)

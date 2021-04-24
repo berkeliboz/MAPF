@@ -156,6 +156,7 @@ class IDCBS_Solver:
 
 
     def __expand_node(self, node, problem, agentSolver, constraintGenerator, heuristic):
+            self.nodesExpanded += 1
             constraints = constraintGenerator.generate_constraints(node)
             children = []
             for i in constraints:
