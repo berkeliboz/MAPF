@@ -1,5 +1,5 @@
 from collections import deque
-from mdd import classify_collisions, Agent, generate_mdd
+from mdd import Agent, generate_mdd
 
 # Used to hold all initial data for a MAPF problem.
 class MAPF_Problem:

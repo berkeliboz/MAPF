@@ -1,5 +1,5 @@
 ## Basic A* single agent planner.
-from single_agent_planner import a_star
+from single_agent_planner import a_star, get_location
 class Standard_Solver:
     def __init__(self, myMap):
         self.myMap = myMap
@@ -16,9 +16,14 @@ class Basic_Constraint_Generator:
     def generate_constraints(self, node):
         return standard_splitting(node.collisions[0])
 
+# Disjoint constraint generator
+from cbs import disjoint_splitting
+class Disjoint_Constraint_Generator:
+    def generate_constraints(self, node):
+        return disjoint_splitting(node.collisions[0])
 
 # Constraint generator with MDD guided optimizations.
-from mdd import generate_mdd
+from mdd import generate_mdd, classify_constraints
 class MDD_Optmized_cnstrnt_gnr8tr: # :P
     def __init__(self, h_vals, starts):
         self.h_vals = h_vals
@@ -27,7 +32,7 @@ class MDD_Optmized_cnstrnt_gnr8tr: # :P
     def generate_constraints(self, node):
         mdds = {}
         constraints = []
-
+        constraints_sorted = []
         for i in node.collisions:
             agents = [i['a1'], i['a2']]
             for agent in agents:
@@ -39,9 +44,9 @@ class MDD_Optmized_cnstrnt_gnr8tr: # :P
                         maxCost += 1
                         mdd = generate_mdd(self.starts[agent], self.h_vals[agent], maxCost)
                     mdds[agent] = mdd
-
-            constraints += disjoint_splitting(i)
-        return constraints
+            constraints += standard_splitting(i)
+            constraints_sorted = classify_constraints(mdds, constraints)
+        return [constraints_sorted[0], constraints_sorted[1]]
 
     # Deprecated
     def generate_constraints_single(self, collision):

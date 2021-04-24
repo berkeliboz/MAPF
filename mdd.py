@@ -150,34 +150,56 @@ def cross_nodes(agent_node: MDD_Node, other_node: MDD_Node, id: int) -> MDD_Node
     return MDD_Node(id, (agent_node, other_node), agent_node.depth)
 
 
-def classify_collisions(mdd_list: List, collisions: List) -> List:
+def classify_constraints(mdd_list, constraints: List) -> List:
     prioritied_list = []
     non_prioritied_list = []
-    for collision in collisions:
-        agent_mdd = mdd_list[collision['a1']]
-        other_mdd = mdd_list[collision['a2']]
+    for constraint_index in range(0, len(constraints) - 1, 2):
+        agent_mdd = mdd_list[constraints[constraint_index]['agent']]
+        next_index = constraint_index + 1
+        other_mdd = mdd_list[constraints[next_index]['agent']]
         if agent_mdd and other_mdd:
-            type = classify_collision(agent_mdd, other_mdd, collision)
+            type = classify_collision(agent_mdd, other_mdd, constraints[constraint_index]['loc'])
             if type is None:
-                non_prioritied_list.append(collision)
+                non_prioritied_list.append(constraints[constraint_index])
+                non_prioritied_list.append(constraints[next_index])
             elif type is collision_type.non_cardinal:
-                non_prioritied_list.insert(0, collision)
+                non_prioritied_list.insert(0, constraints[constraint_index])
+                non_prioritied_list.insert(0, constraints[next_index])
             elif type is collision_type.cardinal:
-                prioritied_list.insert(0, collision)
+                prioritied_list.insert(0, constraints[constraint_index])
+                prioritied_list.insert(0, constraints[next_index])
             else:
-                prioritied_list.append(collision)
+                prioritied_list.append(constraints[constraint_index])
+                prioritied_list.append(constraints[next_index])
+        else:
+            print("here")
     prioritied_list.extend(non_prioritied_list)
     return prioritied_list
 
-def classify_collision(agent_mdd: MDD, other_agent_mdd: MDD, collision):
+    # for constraint in constraints:
+    #     agent_mdd = mdd_list[collision['a1']]
+    #     other_mdd = mdd_list[collision['a2']]
+    #     if agent_mdd and other_mdd:
+    #         type = classify_collision(agent_mdd, other_mdd, collision)
+    #         if type is None:
+    #             non_prioritied_list.append(collision)
+    #         elif type is collision_type.non_cardinal:
+    #             non_prioritied_list.insert(0, collision)
+    #         elif type is collision_type.cardinal:
+    #             prioritied_list.insert(0, collision)
+    #         else:
+    #             prioritied_list.append(collision)
+    # prioritied_list.extend(non_prioritied_list)
+    # return prioritied_list
+
+def classify_collision(agent_mdd: MDD, other_agent_mdd: MDD, location):
     if agent_mdd is None or other_agent_mdd is None:
         return None
-    loc = collision['loc'][0]
 
-    agent_node_filter = filter(lambda n: n.location == loc, agent_mdd.nodes)
+    agent_node_filter = filter(lambda n: n.location == location, agent_mdd.nodes)
     agent_path = agent_node_filter.__sizeof__() > 1
 
-    other_agent_node_filter = filter(lambda n: n.location == loc, other_agent_mdd.nodes)
+    other_agent_node_filter = filter(lambda n: n.location == location, other_agent_mdd.nodes)
     other_path = other_agent_node_filter.__sizeof__() > 1
 
     if agent_path and other_path:
