@@ -9,6 +9,7 @@ from independent import IndependentSolver
 from prioritized import PrioritizedPlanningSolver
 from visualize import Animation
 from single_agent_planner import get_sum_of_cost
+import time
 
 SOLVER = "CBS"
 
@@ -118,7 +119,10 @@ if __name__ == '__main__':
             # collisionDetector = idcbs_plugins.Collision_Detector_A()
             collisionDetector = idcbs_plugins.Collision_Detector_B()
             constraintGenerator = idcbs_plugins.Basic_Constraint_Generator()
+            startTime = time.perf_counter()
             paths = mapfSolver.find_solution(problem, singleAgentSolver, collisionDetector, constraintGenerator)
+            stopTime = time.perf_counter()
+            print("Solution time: {}".format(stopTime - startTime))
             print("Nodes generated: {}".format(mapfSolver.nodesGenerated))
             print("Nodes expanded: {}".format(mapfSolver.nodesExpanded))
             print("Maximum DFS bounds: {}".format(mapfSolver.maximumDFSBounds))
