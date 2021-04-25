@@ -113,6 +113,9 @@ class IDCBS_Solver:
         self.nodesGenerated = 0
         self.nodesExpanded = 0
         self.maximumDFSBounds = 0
+        
+        # Global conflict avoidance table to keep track of all location-time pairs for all agent paths
+        self.CAT = []
         pass
 
     # problem is a MAPF_Problem object defined above.
@@ -170,6 +173,7 @@ class IDCBS_Solver:
                             agentID, \
                             constraints=child.constraints)
                 child.paths[agentID] = agentSolver.find_path(agent)
+                self.CAT[agentID] = child.paths[agentID]
                 if child.paths[agentID]:
                     child.gVal = self.__calculate_gVal(child)
                     child.hVal = self.__calculate_hVal(child, heuristic)
@@ -202,6 +206,7 @@ class IDCBS_Solver:
         node.gVal = self.__calculate_gVal(node)
         node.hVal = self.__calculate_hVal(node, collisionDetector.count_collisions)
         maxF = node.gVal + node.hVal
+        self.CAT = node.paths
         nodeStack = [node]
         while nodeStack:
             node = nodeStack.pop()
